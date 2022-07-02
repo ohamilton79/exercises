@@ -109,8 +109,10 @@ string.
 -}
 subString :: Int -> Int -> [Char] -> [Char]
 subString start end str =
-    let nChars = end - start + 1
-    in take nChars (drop start str)
+    let i = max 0 start
+        j = max (-1) end
+        nChars = j - i + 1
+    in take nChars (drop i str)
 
 {- | Write a function that takes a String — space separated numbers,
 and finds a sum of the numbers inside this string.
