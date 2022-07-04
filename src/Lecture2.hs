@@ -41,6 +41,7 @@ module Lecture2
     ) where
 
 -- VVV If you need to import libraries, do it after this line ... VVV
+import Data.Char (isSpace)
 
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
@@ -52,7 +53,9 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct (0:_) = 0
+lazyProduct (x:xs) = x * lazyProduct xs
+lazyProduct [] = 1
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +65,8 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate (x:xs) = x : x : duplicate xs
+duplicate [] = []
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +78,20 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a, [a])
+{- 
+removeAt index list
+    | index < 0 || index >= length list = (Nothing, list)
+    | otherwise = (Just (list !! index), take index list ++ drop (index + 1) list)
+-}
+removeAt index = removeHelper (max index (-1)) [] 
+  where
+      removeHelper :: Int -> [a] -> [a] -> (Maybe a, [a])
+      removeHelper (-1) [] xs = (Nothing, xs)
+      removeHelper 0 ys (x:xs) = (Just x, ys ++ xs)
+      removeHelper _ ys [] = (Nothing, ys)
+      removeHelper n ys (x:xs) = removeHelper (n - 1) (ys ++ [x]) xs
+
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +102,11 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists (x:xs) = if (even . length) x
+                   then x : evenLists xs
+                   else evenLists xs
+evenLists [] = []
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,8 +122,19 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
 
+{- The following function works, but I need to come up with a better implementation... -}
+dropSpaces :: String -> String 
+dropSpaces (x:y:xs)
+  | isSpace x && isSpace y = dropSpaces xs
+  | isSpace x && not (isSpace y) = y : dropSpaces xs 
+  | not (isSpace x) && isSpace y = [x]
+  | not (isSpace x) && not (isSpace y) = x : y : dropSpaces xs
+  | otherwise = []
+dropSpaces (x:xs)
+  | isSpace x = dropSpaces xs
+  | otherwise = x : dropSpaces xs
+dropSpaces _ = []
 {- |
 
 The next task requires to create several data types and functions to
@@ -157,6 +189,8 @@ You're free to define any helper functions.
        treasure besides gold (if you already haven't done this).
 -}
 
+-- TODO: Implement XP, Dragon colour, and Chest fully
+
 -- some help in the beginning ;)
 data Knight = Knight
     { knightHealth    :: Int
@@ -164,7 +198,39 @@ data Knight = Knight
     , knightEndurance :: Int
     }
 
-dragonFight = error "TODO"
+data Chest = Chest
+    {
+      chestGold     :: Int
+    , chestTreasure :: Bool
+    }
+
+data DragonColour = Red | Black | Green
+
+data Dragon = Dragon
+    {
+      dragonColour    :: DragonColour
+    , dragonHealth    :: Int
+    , dragonFirePower :: Int
+    }
+
+data FightResult = KnightWins | KnightLoses | KnightRunsAway
+
+{- Helper function to handle logic for when knight strikes dragon -}
+swordStrike :: Knight -> Dragon -> Int -> FightResult
+swordStrike (Knight kHealth kAttack kEndurance) (Dragon dColour dHealth dFirePower) strikeCount
+  | kHealth <= 0 = KnightLoses
+  | kEndurance <= 0 = KnightRunsAway
+  | dHealth <= 0 = KnightWins
+  -- dragon breathes fire + knight attacks
+  | strikeCount == 10 = swordStrike (Knight (kHealth - dFirePower) kAttack (kEndurance - 1)) (Dragon dColour (dHealth - kAttack) dFirePower) (strikeCount + 1)
+  -- knight attacks
+  | otherwise = swordStrike (Knight kHealth kAttack (kEndurance - 1)) (Dragon dColour (dHealth - kAttack) dFirePower) (strikeCount + 1)
+
+dragonFight :: Knight -> Dragon -> FightResult
+dragonFight (Knight kHealth kAttack kEndurance) (Dragon dColour dHealth dFirePower)
+  | kHealth == 0 = KnightLoses
+  | kEndurance == 0 = KnightRunsAway
+  | otherwise = swordStrike (Knight kHealth kAttack kEndurance) (Dragon dColour dHealth dFirePower) 0
 
 ----------------------------------------------------------------------------
 -- Extra Challenges
