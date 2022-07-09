@@ -240,7 +240,7 @@ row in the file.
 rowToStats :: Row -> Stats
 rowToStats row = Stats
    (Sum 1)
-   (Sum (rowCost row))
+   (Sum (if rowTradeType row == Sell then rowCost row else -(rowCost row)))
    (Max (rowCost row))
    (Min (rowCost row))
    (if rowTradeType row == Sell then Just (Max (rowCost row)) else Nothing)
