@@ -103,6 +103,8 @@ module Lecture4
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Semigroup (Max (..), Min (..), Semigroup (..), Sum (..))
 import Text.Read (readMaybe)
+import Data.Maybe (mapMaybe)
+import System.Environment (getArgs)
 
 {- In this exercise, instead of writing the entire program from
 scratch, you're offered to complete the missing parts.
@@ -134,8 +136,32 @@ errors. We will simply return an optional result here.
 🕯 HINT: Use the 'readMaybe' function from the 'Text.Read' module.
 -}
 
+trimString :: String -> String
+trimString [] = []
+trimString (x:xs)
+   | x == ' ' = trimString xs
+   | otherwise = x : trimString xs
+
+splitByChar :: Char -> String -> [String]
+splitByChar c = splitHelper c "" where
+   splitHelper :: Char -> String -> String -> [String]
+   splitHelper _ curr "" = [curr]
+   splitHelper c curr (x:xs)
+      | x == c = curr : splitHelper c "" xs
+      | otherwise = splitHelper c (curr ++ [x]) xs
+
+
 parseRow :: String -> Maybe Row
-parseRow = error "TODO"
+parseRow strList = checkErrors (splitByChar ',' strList) where
+   checkErrors :: [String] -> Maybe Row
+   checkErrors strList
+      | length strList /= 3 = Nothing
+      | head strList == "" = Nothing
+      | trimString (strList !! 1) /= "Buy" && trimString (strList !! 1) /= "Sell" = Nothing
+      | (readMaybe (strList !! 2) :: Maybe Int) == Nothing = Nothing
+      | (read (strList !! 2) :: Int) < 0 = Nothing
+      | otherwise = Just (Row (strList !! 0) (if trimString (strList !! 1) == "Buy" then Buy else Sell) (read (strList !! 2) :: Int))
+      
 
 {-
 We have almost all we need to calculate final stats in a simple and
@@ -157,7 +183,10 @@ string.
 If both strings have the same length, return the first one.
 -}
 instance Semigroup MaxLen where
-
+   (<>) (MaxLen strA) (MaxLen strB)
+      | length strA > length strB = MaxLen strA
+      | length strB > length strA = MaxLen strB
+      | otherwise = MaxLen strA
 
 {-
 It's convenient to represent our stats as a data type that has
@@ -184,7 +213,16 @@ instance for the 'Stats' type itself.
 -}
 
 instance Semigroup Stats where
-
+   (<>) statsA statsB = Stats 
+      (statsTotalPositions statsA <> statsTotalPositions statsB)
+      (statsTotalSum statsA <> statsTotalSum statsB)
+      (statsAbsoluteMax statsA <> statsAbsoluteMax statsB)
+      (statsAbsoluteMin statsA <> statsAbsoluteMin statsB)
+      (statsSellMax statsA <> statsSellMax statsB)
+      (statsSellMin statsA <> statsSellMin statsB)
+      (statsBuyMax statsA <> statsBuyMax statsB)
+      (statsBuyMin statsA <> statsBuyMin statsB)
+      (statsLongest statsA <> statsLongest statsB)
 
 {-
 The reason for having the 'Stats' data type is to be able to convert
@@ -200,7 +238,17 @@ row in the file.
 -}
 
 rowToStats :: Row -> Stats
-rowToStats = error "TODO"
+rowToStats row = Stats
+   (Sum 1)
+   (Sum (rowCost row))
+   (Max (rowCost row))
+   (Min (rowCost row))
+   (if rowTradeType row == Sell then Just (Max (rowCost row)) else Nothing)
+   (if rowTradeType row == Sell then Just (Min (rowCost row)) else Nothing)
+   (if rowTradeType row == Buy then Just (Max (rowCost row)) else Nothing)
+   (if rowTradeType row == Buy then Just (Min (rowCost row)) else Nothing)
+   (MaxLen (rowProduct row))
+   
 
 {-
 Now, after we learned to convert a single row, we can convert a list of rows!
@@ -226,7 +274,8 @@ implement the next task.
 -}
 
 combineRows :: NonEmpty Row -> Stats
-combineRows = error "TODO"
+combineRows rowList = 
+    sconcat (fmap rowToStats rowList)
 
 {-
 After we've calculated stats for all rows, we can then pretty-print
@@ -237,7 +286,19 @@ you can return string "no value"
 -}
 
 displayStats :: Stats -> String
-displayStats = error "TODO"
+displayStats stats = "Total positions        : " ++ show (getSum (statsTotalPositions stats)) ++
+   "\nTotal final balance    : " ++ show (getSum (statsTotalSum stats)) ++
+   "\nBiggest absolute cost  : " ++ show (getMax (statsAbsoluteMax stats)) ++
+   "\nSmallest absolute cost : " ++ show (getMin (statsAbsoluteMin stats)) ++
+   "\nMax earning            : " ++ (case (statsSellMax stats) of Nothing -> "no value" 
+                                                                  (Just x) -> (show (getMax x))) ++
+   "\nMin earning            : " ++ (case (statsSellMin stats) of Nothing -> "no value" 
+                                                                  (Just x) -> (show (getMin x))) ++
+   "\nMax spending           : " ++ (case (statsBuyMax stats) of Nothing -> "no value" 
+                                                                 (Just x) -> (show (getMax x))) ++
+   "\nMin spending           : " ++ (case (statsBuyMin stats) of Nothing -> "no value" 
+                                                                 (Just x) -> (show (getMin x))) ++
+   "\nLongest product name   : " ++ show (unMaxLen (statsLongest stats))
 
 {-
 Now, we definitely have all the pieces in places! We can write a
@@ -257,7 +318,11 @@ the file doesn't have any products.
 -}
 
 calculateStats :: String -> String
-calculateStats = error "TODO"
+calculateStats inputStr
+   | null listOfRows = "File doesn't have any products"
+   | otherwise = displayStats (combineRows (head listOfRows :| listOfRows))
+   where
+      listOfRows = mapMaybe parseRow (lines inputStr)
 
 {- The only thing left is to write a function with side-effects that
 takes a path to a file, reads its content, calculates stats and prints
@@ -267,8 +332,9 @@ Use functions 'readFile' and 'putStrLn' here.
 -}
 
 printProductStats :: FilePath -> IO ()
-printProductStats = error "TODO"
-
+printProductStats filePath = do
+   fileContents <- readFile filePath
+   putStrLn $ calculateStats fileContents
 {-
 Okay, I lied. This is not the last thing. Now, we need to wrap
 everything together. In our 'main' function, we need to read
@@ -283,7 +349,12 @@ https://hackage.haskell.org/package/base-4.16.0.0/docs/System-Environment.html#v
 -}
 
 main :: IO ()
-main = error "TODO"
+main = do
+   args <- getArgs
+   if null args
+   then putStrLn "Error: file path not found"  
+   else printProductStats (head args)
+   
 
 
 {-
