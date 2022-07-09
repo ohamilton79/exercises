@@ -320,7 +320,7 @@ the file doesn't have any products.
 calculateStats :: String -> String
 calculateStats inputStr
    | null listOfRows = "File doesn't have any products"
-   | otherwise = displayStats (combineRows (head listOfRows :| listOfRows))
+   | otherwise = displayStats (combineRows (head listOfRows :| tail listOfRows))
    where
       listOfRows = mapMaybe parseRow (lines inputStr)
 
