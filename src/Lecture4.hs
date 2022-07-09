@@ -298,7 +298,7 @@ displayStats stats = "Total positions        : " ++ show (getSum (statsTotalPosi
                                                                  (Just x) -> (show (getMax x))) ++
    "\nMin spending           : " ++ (case (statsBuyMin stats) of Nothing -> "no value" 
                                                                  (Just x) -> (show (getMin x))) ++
-   "\nLongest product name   : " ++ show (unMaxLen (statsLongest stats))
+   "\nLongest product name   : " ++ unMaxLen (statsLongest stats)
 
 {-
 Now, we definitely have all the pieces in places! We can write a
