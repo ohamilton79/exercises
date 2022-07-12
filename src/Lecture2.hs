@@ -84,7 +84,7 @@ removeAt index list
     | index < 0 || index >= length list = (Nothing, list)
     | otherwise = (Just (list !! index), take index list ++ drop (index + 1) list)
 -}
-removeAt index = removeHelper (max index (-1)) [] 
+removeAt index = removeHelper (max index (-1)) []
   where
       removeHelper :: Int -> [a] -> [a] -> (Maybe a, [a])
       removeHelper (-1) [] xs = (Nothing, xs)
@@ -124,10 +124,10 @@ spaces.
 -}
 
 {- The following function works, but I need to come up with a better implementation... -}
-dropSpaces :: String -> String 
+dropSpaces :: String -> String
 dropSpaces (x:y:xs)
   | isSpace x && isSpace y = dropSpaces xs
-  | isSpace x && not (isSpace y) = y : dropSpaces xs 
+  | isSpace x && not (isSpace y) = y : dropSpaces xs
   | not (isSpace x) && isSpace y = [x]
   | not (isSpace x) && not (isSpace y) = x : y : dropSpaces xs
   | otherwise = []
@@ -251,8 +251,19 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
-
+isIncreasing [] = True
+isIncreasing [_] = True
+isIncreasing (x:y:xs)
+  | x <= y = isIncreasing (y:xs)
+  | otherwise = False
+{-
+isIncreasing list = increasingHelper 0 where
+    increasingHelper :: Int -> Bool
+    increasingHelper index
+      | index == length list - 1 = True
+      | list !! index > list !! (index + 1) = False
+      | otherwise = increasingHelper (index + 1)
+-}
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
 increasing order.
@@ -264,7 +275,12 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge listA listB
+    | null listA && null listB = []
+    | null listA = head listB : merge [] (tail listB)
+    | null listB = head listA : merge (tail listA) []
+    | head listA < head listB = head listA : merge (tail listA) listB
+    | otherwise = head listB : merge listA (tail listB)
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -281,7 +297,10 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
+mergeSort list
+  | length list < 2 = list
+  | otherwise = let mid = length list `div` 2
+              in merge (mergeSort (take mid list)) (mergeSort (drop mid list))
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -334,7 +353,18 @@ data EvalError
 It returns either a successful evaluation result or an error.
 -}
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval variables expression =
+  case expression of
+    Lit a -> Right a
+    Var a -> case lookup a variables of
+                               Nothing -> Left (VariableNotFound a)
+                               Just x -> Right x
+    Add a b -> case eval variables a of
+                   Left err -> Left err
+                   Right x -> case eval variables b of
+                                  Left err -> Left err
+                                  Right y -> Right (x + y)
+
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -358,4 +388,48 @@ Write a function that takes and expression and performs "Constant
 Folding" optimization on the given expression.
 -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+-- constantFolding expression = foldingHelper expression 0 where
+  -- foldingHelper :: Expr -> Int -> Expr
+  {-
+  foldingHelper (Lit x) c = Lit (x + c)
+  foldingHelper (Var x) 0 = Var x
+  foldingHelper (Var x) c = Add (Var x) (Lit c)
+  foldingHelper (Add (Lit x) (Lit y)) c = Lit (x + y + c)
+  foldingHelper (Add (Var x) (Lit y)) c = Add (Var x) (Lit (y + c))
+  foldingHelper (Add (Lit x) (Var y)) c = Add (Var y) (Lit (x + c))
+  foldingHelper (Add (Lit x) exprA) c = foldingHelper exprA (c + x)
+  foldingHelper (Add (Var x) exprA) c = Add (Var x) (foldingHelper exprA c)
+  foldingHelper (Add exprA (Var x)) c = Add (Var x) (foldingHelper exprA c)
+  foldingHelper (Add exprA (Lit x)) c = foldingHelper exprA (c + x)
+  foldingHelper (Add exprA exprB) c = Add (foldingHelper exprA c) (foldingHelper exprB 0)
+  -}
+{-constantFolding (Lit x) = Lit x
+constantFolding (Var x) = Var x
+constantFolding (Add (Lit x) (Lit y)) = Lit (x + y)
+constantFolding (Add (Lit x) (Add (Lit y) a)) = constantFolding (Add (Lit (x + y)) a)
+constantFolding (Add (Lit x) (Add a (Lit y))) = constantFolding (Add (Lit (x + y)) a)
+constantFolding (Add (Add (Lit y) a) (Lit x)) = constantFolding (Add (Lit (x + y)) a)
+constantFolding (Add (Add a (Lit y)) (Lit x)) = constantFolding (Add (Lit (x + y)) a)
+constantFolding (Add a (Add (Lit x) b)) = constantFolding (Add (Lit x) (Add a b))
+constantFolding (Add a (Add b (Lit x))) = constantFolding (Add (Lit x) (Add a b))
+constantFolding (Add (Add (Lit x) b) a) = constantFolding (Add (Lit x) (Add a b))
+constantFolding (Add (Add b (Lit x)) a) = constantFolding (Add (Lit x) (Add a b))
+constantFolding (Add x y) = (Add (constantFolding x) (constantFolding y))
+-}
+constantFolding (Lit x) = Lit x
+constantFolding (Var x) = Var x
+constantFolding (Add a (Lit 0)) = constantFolding a
+constantFolding (Add (Lit 0) a) = constantFolding a
+constantFolding (Add a (Add (Var y) b)) = constantFolding (Add (Var y) ((Add a b)))
+constantFolding (Add (Add (Var y) a) b) = constantFolding (Add (Var y) ((Add a b)))
+constantFolding (Add a (Add b (Var y))) = constantFolding (Add (Var y) ((Add a b)))
+constantFolding (Add (Add a (Var y)) b) = constantFolding (Add (Var y) ((Add a b)))
+constantFolding (Add (Lit x) (Lit y)) = Lit (x + y)
+{-
+constantFolding (Add (Lit x) (Add (Lit y) (Var a))) = Add (Var a) (Lit (x + y))
+constantFolding (Add (Lit x) (Add (Var a) (Lit y))) = Add (Var a) (Lit (x + y))
+-}
+constantFolding (Add a b)
+    | constantFolding a == Lit 0 = constantFolding b
+    | constantFolding b == Lit 0 = constantFolding a
+    | otherwise = Add (constantFolding a) (constantFolding b)
